@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
-from BlazeposeRenderer import BlazeposeRenderer
 import argparse
+
+import yaml
+
+from BlazeposeRenderer import BlazeposeRenderer
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -73,7 +76,9 @@ parser_renderer.add_argument(
     default=None,
     help="Display skeleton in 3d in a separate window. See README for description.",
 )
-parser_renderer.add_argument("-o", "--output", help="Path to output video file")
+parser_renderer.add_argument(
+    "-o", "--output", help="Path to output files (no extension)"
+)
 
 
 args = parser.parse_args()
@@ -96,17 +101,23 @@ tracker = BlazeposeDepthai(
     trace=args.trace,
 )
 
-renderer = BlazeposeRenderer(tracker, show_3d=args.show_3d, output=args.output)
+renderer = BlazeposeRenderer(tracker, show_3d=args.show_3d, output=args.output + ".mp4")
+
+pose_list = []
 
 while True:
     # Run blazepose on next frame
     frame, body = tracker.next_frame()
     if frame is None:
         break
+    # Add detected pose to list
+    pose_list.append(body)
     # Draw 2d skeleton
     frame = renderer.draw(frame, body)
     key = renderer.waitKey(delay=1)
     if key == 27 or key == ord("q"):
         break
+with open(args.output + ".yaml", "w") as file:
+    yaml.dump(pose_list, file, default_flow_style=None)
 renderer.exit()
 tracker.exit()
