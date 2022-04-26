@@ -2,7 +2,7 @@
 
 import argparse
 
-import yaml
+import pickle
 
 from BlazeposeRenderer import BlazeposeRenderer
 
@@ -117,7 +117,7 @@ while True:
     key = renderer.waitKey(delay=1)
     if key == 27 or key == ord("q"):
         break
-with open(args.output + ".yaml", "w") as file:
-    yaml.dump(pose_list, file, default_flow_style=None)
+with open(args.output + ".pickle", "w") as file:
+    pickle.dump(pose_list, file, protocol=pickle.HIGHEST_PROTOCOL)
 renderer.exit()
-tracker.exit()
+tracker.exit() #python3 demo.py -e -xyz -s -t -3 world -o ~/Documents/Repos/depthai_blazepose/outputs/test
