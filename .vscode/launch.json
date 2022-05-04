@@ -5,7 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Custom Settings",
+            "name": "Test Reader",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/read.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Blazepose",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/demo.py",
@@ -20,7 +28,7 @@
                 "-3",
                 "mixed",
                 "-o",
-                "~/Videos/test"
+                "~/Documents/Repos/depthai_blazepose/outputs/test"
             ]
         }
     ]
