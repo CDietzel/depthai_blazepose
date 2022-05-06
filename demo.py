@@ -120,4 +120,4 @@ while True:
 with open(args.output + ".pickle", "wb") as file:
     pickle.dump(pose_list, file, protocol=pickle.HIGHEST_PROTOCOL)
 renderer.exit()
-tracker.exit() #python3 demo.py -e -xyz -s -t -3 world -o ~/Documents/Repos/depthai_blazepose/outputs
+tracker.exit() #python3 demo.py -e -xyz -s -t -3 world -o ~/Documents/Repos/depthai_blazepose/outputs/test
