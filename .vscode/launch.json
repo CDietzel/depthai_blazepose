@@ -30,6 +30,14 @@
                 "-o",
                 "~/Documents/Repos/depthai_blazepose/outputs/test"
             ]
-        }
+        },
+        {
+            "name": "Pose Estimator Runner",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/runner.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
     ]
 }
