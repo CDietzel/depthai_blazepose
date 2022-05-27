@@ -67,31 +67,36 @@ class PoseEstimatorRunner:
         return estimates
 
     def refine_keypoints(self, keypoints_arr, estimates_arr, skeleton, pairs):
-        refined_keypoints = keypoints_arr.copy()
-        for iter in range(5):  # maybe it will converge?
-            for i, (keypoints, estimates) in enumerate(
-                zip(keypoints_arr, estimates_arr)
-            ):
-                for pair in pairs:
-                    quad = np.take(skeleton, pair, axis=0)
-                    mid = np.bincount(quad.flatten()).argmax()
-                    lr = quad[quad != mid]
-                    left = lr[0]
-                    right = lr[1]
-                    A = keypoints[left]
-                    B = keypoints[right]
-                    C = keypoints[mid]
-                    dA = estimates[pair[0]]
-                    dB = estimates[pair[1]]
-                    newC = self._refine_distance(A, B, C, dA, dB)
-                    refined_keypoints[i][mid] = newC
-        return refined_keypoints
+        updated_keypoints = keypoints_arr.copy()
+        for i, (keypoints, estimates) in enumerate(
+            zip(keypoints_arr, estimates_arr)
+        ):
+            for pair in pairs:
+                quad = np.take(skeleton, pair, axis=0)
+                mid = np.bincount(quad.flatten()).argmax()
+                lr = quad[quad != mid]
+                left = lr[0]
+                right = lr[1]
+                A = keypoints[left]
+                B = keypoints[right]
+                C = keypoints[mid]
+                dA = estimates[pair[0]]
+                dB = estimates[pair[1]]
+                newC = self._refine_distance(A, B, C, dA, dB)
+                updated_keypoints[i][mid] = newC
+        # keypoints_diff = updated_keypoints - keypoints_arr
+        # diff_norm = np.linalg.norm(keypoints_diff, axis=2)
+        # max_diff = np.amax(diff_norm)
+        # max_pos = np.unravel_index(np.argmax(diff_norm), diff_norm.shape)
+        # print(max_diff)
+        # print(max_pos)
+        return updated_keypoints
 
     def _refine_distance(self, A, B, C, dAC, dBC):
         dAB = np.linalg.norm(A - B)
         if dAB > dAC + dBC:  # Escape hatch for when geometrically
-            # dAB = dAC + dBC  # impossible constraints happen
-            return C
+            dAB = dAC + dBC  # impossible constraints happen
+            # return C
         AB = B - A
         AB = AB / np.linalg.norm(AB)  # x axis
         AC = C - A
@@ -135,82 +140,84 @@ class PoseEstimatorRunner:
 
 def main():
     runner = PoseEstimatorRunner()
-    poses_path = "/home/locobot/Documents/Repos/depthai_blazepose/outputs/no_moving_no_smoothing.pickle"
-    # skeleton = (
-    #     (11, 13),
-    #     (12, 14),
-    #     (13, 15),
-    #     (14, 16),
-    #     (23, 25),
-    #     (24, 26),
-    #     (25, 27),
-    #     (26, 28),
-    #     (27, 29),
-    #     (28, 30),
-    #     (27, 31),
-    #     (28, 32),
-    #     (29, 31),
-    #     (30, 32),
-    # )
-    skeleton = LINES_BODY
-    # pairs = (
-    #     (0, 2),
-    #     (1, 3),
-    #     (4, 6),
-    #     (5, 7),
-    #     (6, 8),
-    #     (6, 10),
-    #     (7, 9),
-    #     (7, 11),
-    #     (8, 12),
-    #     (9, 13),
-    #     (10, 12),
-    #     (11, 13),
-    # )
-    pairs = (
-        (8, 9),
-        (8, 12),
-        (9, 12),
-        (3, 8),
-        (3, 11),
-        (8, 11),
-        (12, 13),
-        (3, 4),
-        (13, 14),
-        (13, 16),
+    poses_path = "/home/locobot/Documents/Repos/depthai_blazepose/outputs/6.pickle"
+    skeleton = (
+        (11, 13),
+        (12, 14),
+        (13, 15),
         (14, 16),
-        (4, 5),
-        (4, 7),
-        (5, 7),
-        (15, 16),
-        (6, 7),
-        (14, 15),
-        (5, 6),
-        (9, 10),
-        (9, 20),
-        (10, 20),
-        (10, 11),
-        (10, 17),
-        (11, 17),
-        (20, 21),
-        (17, 18),
+        (23, 25),
+        (24, 26),
+        (25, 27),
+        (26, 28),
+        (27, 29),
+        (28, 30),
+        (27, 31),
+        (28, 32),
+        (29, 31),
+        (30, 32),
     )
-    poses = runner.load_poses(poses_path, 10, 200)
+    # skeleton = LINES_BODY
+    pairs = (
+        (0, 2),
+        (1, 3),
+        (4, 6),
+        (5, 7),
+        (6, 8),
+        (6, 10),
+        (7, 9),
+        (7, 11),
+        (8, 12),
+        (9, 13),
+        (10, 12),
+        (11, 13),
+    )
+    # pairs = (
+    #     (8, 9),
+    #     (8, 12),
+    #     (9, 12),
+    #     (3, 8),
+    #     (3, 11),
+    #     (8, 11),
+    #     (12, 13),
+    #     (3, 4),
+    #     (13, 14),
+    #     (13, 16),
+    #     (14, 16),
+    #     (4, 5),
+    #     (4, 7),
+    #     (5, 7),
+    #     (15, 16),
+    #     (6, 7),
+    #     (14, 15),
+    #     (5, 6),
+    #     (9, 10),
+    #     (9, 20),
+    #     (10, 20),
+    #     (10, 11),
+    #     (10, 17),
+    #     (11, 17),
+    #     (20, 21),
+    #     (17, 18),
+    # )
+    poses = runner.load_poses(poses_path)
     keypoints = runner.extract_keypoints(poses)
     distances = runner.calc_distances(keypoints, skeleton)
     estimates = runner.estimate_distances(distances)
     refined_keypoints = runner.refine_keypoints(keypoints, estimates, skeleton, pairs)
 
-    r_forearm_dist = distances[:, 4]
-    r_forearm_est = estimates[:, 4]
+    r_forearm_dist = distances[:, 1]
+    r_forearm_est = estimates[:, 1]
 
-    r_shoulder_key_orig = keypoints[:, 12]
-    r_shoulder_key_ref = refined_keypoints[:, 12]
+    r_shoulder_key_orig = keypoints[:, 14]
+    r_shoulder_key_ref = refined_keypoints[:, 14]
 
     fig = plt.figure(figsize=(8, 8))
     ax = plt.axes(projection="3d")
     fig.set_tight_layout(True)
-    ax.scatter(r_shoulder_key_orig[:, 0], r_shoulder_key_orig[:, 1], r_shoulder_key_orig[:, 2])
+    ax.plot(
+        r_shoulder_key_orig[:, 0], r_shoulder_key_orig[:, 1], r_shoulder_key_orig[:, 2]
+    )
     x = ax.get_xlim()
     y = ax.get_ylim()
     z = ax.get_zlim()
@@ -219,12 +226,14 @@ def main():
     ax.set_zlabel("Z-axis", fontweight="bold")
     ax.set_title("Initial Right Shoulder Locations (m)")
     ax.view_init(elev=0, azim=0)
-    plt.savefig('1.png', bbox_inches='tight')
+    # plt.savefig("1.png", bbox_inches="tight")
 
     fig = plt.figure(figsize=(8, 8))
     ax = plt.axes(projection="3d")
     fig.set_tight_layout(True)
-    ax.scatter(r_shoulder_key_ref[:, 0], r_shoulder_key_ref[:, 1], r_shoulder_key_ref[:, 2])
+    ax.plot(
+        r_shoulder_key_ref[:, 0], r_shoulder_key_ref[:, 1], r_shoulder_key_ref[:, 2]
+    )
     ax.set_xlim(x)
     ax.set_ylim(y)
     ax.set_zlim(z)
@@ -233,19 +242,19 @@ def main():
     ax.set_zlabel("Z-axis", fontweight="bold")
     ax.set_title("Refined Right Shoulder Locations (m)")
     ax.view_init(elev=0, azim=0)
-    plt.savefig('2.png', bbox_inches='tight')
+    # plt.savefig("2.png", bbox_inches="tight")
 
     fig = plt.figure(figsize=(8, 8))
     ax = plt.axes()
     ax.set_title("Measured Right Forearm Lengths (m)")
     plt.plot(r_forearm_dist)
-    plt.savefig('3.png', bbox_inches='tight')
+    # plt.savefig("3.png", bbox_inches="tight")
 
     fig = plt.figure(figsize=(8, 8))
     ax = plt.axes()
     ax.set_title("Estimated Right Forearm Lengths (m)")
     plt.plot(r_forearm_est)
-    plt.savefig('4.png', bbox_inches='tight')
+    # plt.savefig("4.png", bbox_inches="tight")
 
     print("Original keypoint std: " + str(np.std(r_shoulder_key_orig, axis=0)))
     print("Refined keypoint std:  " + str(np.std(r_shoulder_key_ref, axis=0)))
