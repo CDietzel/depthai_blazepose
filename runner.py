@@ -35,7 +35,9 @@ class PoseEstimatorRunner:
         keypoints_list = []
         for pose in poses:
             if pose is not None:
-                keypoints_list.append(pose.landmarks_world)
+                # keypoints_list.append(pose.landmarks_world)
+                keypoints_list.append(pose.norm_landmarks)
+                # keypoints_list.append(pose.landmarks)
         keypoints = np.array(keypoints_list)
         return keypoints
 
