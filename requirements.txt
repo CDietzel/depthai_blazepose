@@ -3,3 +3,4 @@ depthai >= 2.10
 opencv-python >= 4.5.1.48
 open3d
 matplotlib
+tslearn
