@@ -173,3 +173,5 @@ cython_debug/
 *.vsix
 
 outputs/
+5DoF/
+6DoF/

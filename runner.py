@@ -19,21 +19,22 @@ from BlazeposeRenderer import LINES_BODY, BlazeposeRenderer
 from FPS import FPS, now
 from o3d_utils import Visu3D
 from RLSEstimator import RLSEstimator
+import tensorflow as tf
 
 
-class PoseEstimatorRunner:
+class TrajectoryPreprocessor:
     def __init__(self):
         pass
 
-    def load_poses(self, poses_path, first=0, last=-1):
-        with open(poses_path, "rb") as file:
-            return pickle.load(file)[first:last]
+    def load_pickle(self, pickle_path):
+        with open(pickle_path, "rb") as file:
+            return pickle.load(file)
 
-    def save_poses(self, poses, poses_path):
-        with open(poses_path, "wb") as file:
-            pickle.dump(poses, file, protocol=pickle.HIGHEST_PROTOCOL)
+    def save_pickle(self, pickle_data, pickle_path):
+        with open(pickle_path, "wb") as file:
+            pickle.dump(pickle_data, file, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def extract_keypoints(self, poses):
+    def extract_human_keypoints(self, poses):
         keypoints_list = []
         for pose in poses:
             if pose is not None:
@@ -44,33 +45,40 @@ class PoseEstimatorRunner:
         return keypoints
 
 
-
 def main():
-    runner = PoseEstimatorRunner()
-    poses_path = "/home/locobot/Documents/Repos/depthai_blazepose/outputs/6.pickle"
-
-    poses = runner.load_poses(poses_path)
-    keypoints = runner.extract_keypoints(poses)
-
-    r_shoulder_key_orig = keypoints[:, 14]
-
-    fig = plt.figure(figsize=(8, 8))
-    ax = plt.axes(projection="3d")
-    fig.set_tight_layout(True)
-    ax.plot(
-        r_shoulder_key_orig[:, 0], r_shoulder_key_orig[:, 1], r_shoulder_key_orig[:, 2]
+    runner = TrajectoryPreprocessor()
+    human_poses_path = (
+        "/home/locobot/Documents/Repos/depthai_blazepose/outputs/6.pickle"
     )
-    x = ax.get_xlim()
-    y = ax.get_ylim()
-    z = ax.get_zlim()
-    ax.set_xlabel("X-axis", fontweight="bold")
-    ax.set_ylabel("Y-axis", fontweight="bold")
-    ax.set_zlabel("Z-axis", fontweight="bold")
-    ax.set_title("Initial Right Shoulder Locations (m)")
-    ax.view_init(elev=0, azim=0)
-    # plt.savefig("1.png", bbox_inches="tight")
+    robot_joint_path = (
+        "/home/locobot/Documents/Repos/depthai_blazepose/6DoF/6.recording"
+    )
 
-    plt.show()
+    human_poses = runner.load_pickle(human_poses_path)
+    robot_data = np.array(runner.load_pickle(robot_joint_path))[0, :, :]
+    human_data = runner.extract_human_keypoints(human_poses)[:, 0:33, :]
+    human_data = human_data.reshape(-1, 99)
+
+    # THIS CODE IS TO FIX THE FACT THAT THE ROBOT ARM DATA IS 5x OVERSAMPLED
+    # TODO: Change motion recording code to sample at only 10Hz
+    robot_data = robot_data[2::5]
+    # ===================================================================
+
+    robot_grad = np.gradient(robot_data, axis=0)
+    human_grad = np.gradient(human_data, axis=0)
+
+    robot_grad_mag = np.linalg.norm(robot_grad, axis=1)
+    human_grad_mag = np.linalg.norm(human_grad, axis=1)
+
+    alignment, _ = soft_dtw_alignment(human_grad_mag, robot_grad_mag)
+    row_sum = np.sum(alignment, axis=1)
+    aligned_unscaled = alignment @ robot_data
+    robot_data = aligned_unscaled / row_sum[:, None]
+
+    # plt.gray()
+    # plt.imshow(alignment, interpolation='nearest')
+    # plt.show()
+
     pass
 
 

@@ -1,6 +1,18 @@
 setuptools>=60.2.0
 depthai >= 2.10
-opencv-python >= 4.5.1.48
 open3d
-matplotlib
 tslearn
+tensorflow==2.6.0  
+absl-py==0.12.0
+gin-config==0.4.0
+matplotlib==3.4.3
+mediapy==1.0.3
+opencv-python==4.5.3.56
+pybullet==3.1.6
+scipy==1.7.1
+keras==2.6.0
+tf-agents==0.11.0rc0
+tqdm==4.62.2
+gym==0.19.0 # Added (hopefully) correct gym version
+protobuf==3.20.1 #Added Requirement because protobuf version 4 has breaking changes
+pandas # Added requirement so that VSCode debugging works
