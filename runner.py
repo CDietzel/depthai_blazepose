@@ -78,14 +78,14 @@ class TrajectoryPreprocessor:
         """Returns an int64_list from a bool / enum / int / uint."""
         return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
 
-    def serialize_example(self, step_type, next_step_type, obs, acts, reward, discount):
+    def serialize_example(self, step_type, next_step_type, obs, act, reward, discount):
         features = {
-            "discount": self._float_feature(discount),
-            "step_type": self._int64_feature(step_type),
-            "next_step_type": self._int64_feature(next_step_type),
+            "discount": self._float_feature([discount]),
+            "step_type": self._int64_feature([step_type]),
+            "next_step_type": self._int64_feature([next_step_type]),
             "observation/human_pose": self._float_feature(obs),
-            "action": self._float_feature(acts),
-            "reward": self._float_feature(reward),
+            "action": self._float_feature(act),
+            "reward": self._float_feature([reward]),
         }
         example_proto = tf.train.Example(features=tf.train.Features(feature=features))
         return example_proto.SerializeToString()
@@ -109,11 +109,11 @@ def main():
 
         for recording_num in range(num_recordings):
 
-            human_poses_path = human_poses_folder + str(recording_num) + human_poses_ext
-            robot_joint_path = robot_joint_folder + str(recording_num) + robot_joint_ext
-            tfrecord_path = tfrecord_folder + str(recording_num) + tfrecord_ext
-            tfrecord_spec_path = (
-                tfrecord_folder + str(recording_num) + tfrecord_spec_ext
+            human_poses_path = (
+                human_poses_folder + str(recording_num + 1) + human_poses_ext
+            )
+            robot_joint_path = (
+                robot_joint_folder + str(recording_num + 1) + robot_joint_ext
             )
 
             human_poses = runner.load_pickle(human_poses_path)
@@ -139,34 +139,67 @@ def main():
             aligned_unscaled = alignment @ robot_data
             aligned_robot_data = aligned_unscaled / row_sum[:, None]
 
-            obs_act = zip(human_data, aligned_robot_data)
-            dataset_len = len(obs_act)
+            dataset_len, _ = human_data.shape
 
-            for i, (obs, act) in enumerate(obs_act):
+            for i, (obs, act) in enumerate(zip(human_data, aligned_robot_data)):
                 if i == 0:
-                    pass  # TODO: Fill in this code
-                elif i == (dataset_len - 1):
-                    pass
+                    yield runner.serialize_example(
+                        step_type=0,
+                        next_step_type=1,
+                        obs=obs,
+                        act=act,
+                        reward=0.00001,
+                        discount=1,
+                    )
+                elif i >= (dataset_len - 1):
+                    yield runner.serialize_example(
+                        step_type=2,
+                        next_step_type=0,
+                        obs=obs,
+                        act=act,
+                        reward=0,
+                        discount=1,
+                    )
                 elif i == (dataset_len - 2):
-                    pass
+                    yield runner.serialize_example(
+                        step_type=1,
+                        next_step_type=2,
+                        obs=obs,
+                        act=act,
+                        reward=1,
+                        discount=0,
+                    )
                 else:
-                    pass
+                    yield runner.serialize_example(
+                        step_type=1,
+                        next_step_type=1,
+                        obs=obs,
+                        act=act,
+                        reward=0.00001,
+                        discount=1,
+                    )
+
+    test_val = next(generator())
 
     serialized_features_dataset = tf.data.Dataset.from_generator(
         generator, output_types=tf.string, output_shapes=()
     )
 
     num_shards = 10
-    for i in range(0,1):
-        dataset_shard = serialized_features_dataset.shard(num_shards=num_shards, index=i)
-        filename = 'data/UR5/tw_data_'+str(i)+'.tfrecord'
-        spec_filename = filename + ".spec"
+    for i in range(0, 1):
+        # dataset_shard = serialized_features_dataset.shard(
+        #     num_shards=num_shards, index=i
+        # )
+        tfrecord_path = tfrecord_folder + str(i) + tfrecord_ext
+        tfrecord_spec_path = tfrecord_folder + str(i) + tfrecord_spec_ext
         # example_encoding_dataset.encode_spec_to_file(spec_filename, dataset_shard.element_spec)
-        example_encoding_dataset.encode_spec_to_file(spec_filename, output_spec)
+        example_encoding_dataset.encode_spec_to_file(
+            tfrecord_spec_path, runner.output_spec
+        )
         # print(dataset_shard.element_spec)
         # writer = tf.data.experimental.TFRecordWriter(filename)
-        with tf.io.TFRecordWriter(filename) as writer:
-            for record in dataset_shard:
+        with tf.io.TFRecordWriter(tfrecord_path) as writer:
+            for record in serialized_features_dataset:
                 writer.write(record.numpy())
 
     # plt.gray()
