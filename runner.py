@@ -29,15 +29,17 @@ from RLSEstimator import RLSEstimator
 class TrajectoryPreprocessor:
     def __init__(self):
         self.output_spec = Trajectory(
-            discount=tf.TensorSpec(shape=(1,), dtype=tf.float32),
-            step_type=tf.TensorSpec(shape=(2,), dtype=tf.int64),
-            next_step_type=tf.TensorSpec(shape=(2,), dtype=tf.int64),
+            discount=tf.TensorSpec(shape=(), dtype=tf.float32, name="discount"),
+            step_type=tf.TensorSpec(shape=(), dtype=tf.int64, name="step_type"),
+            next_step_type=tf.TensorSpec(shape=(), dtype=tf.int64, name="step_type"),
             observation={
-                "human_pose": tf.TensorSpec(shape=(99,), dtype=tf.float32),
+                "human_pose": tf.TensorSpec(
+                    shape=(99,), dtype=tf.float32, name="observation/human_pose"
+                ),
             },
-            action=tf.TensorSpec(shape=(5,), dtype=tf.float32),
-            reward=tf.TensorSpec(shape=(1,), dtype=tf.float32),
-            policy_info={},
+            action=tf.TensorSpec(shape=(5,), dtype=tf.float32, name="action"),
+            reward=tf.TensorSpec(shape=(), dtype=tf.float32, name="reward"),
+            policy_info=(),
         )
 
     def load_pickle(self, pickle_path):
@@ -105,23 +107,23 @@ def main():
     tfrecord_spec_ext = ".tfrecord.spec"
     num_recordings = 15
 
-    def generator():
+    num_shards = num_recordings
+    for shard_num in range(num_shards):
 
-        for recording_num in range(num_recordings):
+        def generator():
 
             human_poses_path = (
-                human_poses_folder + str(recording_num + 1) + human_poses_ext
+                human_poses_folder + str(shard_num + 1) + human_poses_ext
             )
             robot_joint_path = (
-                robot_joint_folder + str(recording_num + 1) + robot_joint_ext
+                robot_joint_folder + str(shard_num + 1) + robot_joint_ext
             )
 
             human_poses = runner.load_pickle(human_poses_path)
             robot_data = runner.load_pickle(robot_joint_path)[0]
             human_data = runner.extract_human_keypoints(human_poses)
-            human_data = human_data.reshape(-1, 99)[
-                2:
-            ]  # Ignore first few samples (noisy data)
+            # Ignore first few samples (noisy data)
+            human_data = human_data.reshape(-1, 99)[2:]
 
             # THIS CODE IS TO FIX THE FACT THAT THE ROBOT ARM DATA IS 5x OVERSAMPLED
             # TODO: Change robot motion recording code to sample at only 10Hz
@@ -179,19 +181,17 @@ def main():
                         discount=1,
                     )
 
-    test_val = next(generator())
+        test_val = next(generator())
 
-    serialized_features_dataset = tf.data.Dataset.from_generator(
-        generator, output_types=tf.string, output_shapes=()
-    )
+        serialized_features_dataset = tf.data.Dataset.from_generator(
+            generator, output_types=tf.string, output_shapes=()
+        )
 
-    num_shards = 10
-    for i in range(0, 1):
         # dataset_shard = serialized_features_dataset.shard(
         #     num_shards=num_shards, index=i
         # )
-        tfrecord_path = tfrecord_folder + str(i) + tfrecord_ext
-        tfrecord_spec_path = tfrecord_folder + str(i) + tfrecord_spec_ext
+        tfrecord_path = tfrecord_folder + str(shard_num) + tfrecord_ext
+        tfrecord_spec_path = tfrecord_folder + str(shard_num) + tfrecord_spec_ext
         # example_encoding_dataset.encode_spec_to_file(spec_filename, dataset_shard.element_spec)
         example_encoding_dataset.encode_spec_to_file(
             tfrecord_spec_path, runner.output_spec
