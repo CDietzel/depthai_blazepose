@@ -5,14 +5,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Test Reader",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/read.py",
-            "console": "integratedTerminal",
-            "justMyCode": true
-        },
-        {
             "name": "Blazepose",
             "type": "python",
             "request": "launch",

@@ -36,6 +36,9 @@ class TrajectoryPreprocessor:
                 "human_pose": tf.TensorSpec(
                     shape=(99,), dtype=tf.float32, name="observation/human_pose"
                 ),
+                "action": tf.TensorSpec(
+                    shape=(5,), dtype=tf.float32, name="observation/action"
+                ),
             },
             action=tf.TensorSpec(shape=(5,), dtype=tf.float32, name="action"),
             reward=tf.TensorSpec(shape=(), dtype=tf.float32, name="reward"),
@@ -86,6 +89,7 @@ class TrajectoryPreprocessor:
             "step_type": self._int64_feature([step_type]),
             "next_step_type": self._int64_feature([next_step_type]),
             "observation/human_pose": self._float_feature(obs),
+            "observation/action": self._float_feature(act),
             "action": self._float_feature(act),
             "reward": self._float_feature([reward]),
         }
@@ -106,17 +110,21 @@ def main():
     tfrecord_ext = ".tfrecord"
     tfrecord_spec_ext = ".tfrecord.spec"
     num_recordings = 15
+    num_samples_per_recording = 6
 
     num_shards = num_recordings
-    for shard_num in range(num_shards):
+    for recording_sample_num in range(num_shards * num_samples_per_recording):
+
+        recording_num = recording_sample_num % num_recordings
+        sample_num = recording_sample_num // num_recordings
+        recording_sample_name = str(recording_num + 1) + "_" + str(sample_num + 1)
 
         def generator():
-
             human_poses_path = (
-                human_poses_folder + str(shard_num + 1) + human_poses_ext
+                human_poses_folder + recording_sample_name + human_poses_ext
             )
             robot_joint_path = (
-                robot_joint_folder + str(shard_num + 1) + robot_joint_ext
+                robot_joint_folder + recording_sample_name + robot_joint_ext
             )
 
             human_poses = runner.load_pickle(human_poses_path)
@@ -181,7 +189,7 @@ def main():
                         discount=1,
                     )
 
-        test_val = next(generator())
+        # test_val = next(generator())
 
         serialized_features_dataset = tf.data.Dataset.from_generator(
             generator, output_types=tf.string, output_shapes=()
@@ -190,8 +198,8 @@ def main():
         # dataset_shard = serialized_features_dataset.shard(
         #     num_shards=num_shards, index=i
         # )
-        tfrecord_path = tfrecord_folder + str(shard_num) + tfrecord_ext
-        tfrecord_spec_path = tfrecord_folder + str(shard_num) + tfrecord_spec_ext
+        tfrecord_path = tfrecord_folder + recording_sample_name + tfrecord_ext
+        tfrecord_spec_path = tfrecord_folder + recording_sample_name + tfrecord_spec_ext
         # example_encoding_dataset.encode_spec_to_file(spec_filename, dataset_shard.element_spec)
         example_encoding_dataset.encode_spec_to_file(
             tfrecord_spec_path, runner.output_spec
@@ -206,7 +214,7 @@ def main():
     # plt.imshow(alignment, interpolation='nearest')
     # plt.show()
 
-    pass
+    # pass
 
 
 if __name__ == "__main__":
