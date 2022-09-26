@@ -6,6 +6,8 @@ import sys
 from math import cos, sin, sqrt
 from pathlib import Path
 from string import Template
+from itertools import tee
+
 
 import cv2
 import depthai as dai
@@ -83,18 +85,26 @@ class TrajectoryPreprocessor:
         """Returns an int64_list from a bool / enum / int / uint."""
         return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
 
-    def serialize_example(self, step_type, next_step_type, obs, act, reward, discount):
+    def serialize_example(
+        self, step_type, next_step_type, obs, prev_act, act, reward, discount
+    ):
         features = {
             "discount": self._float_feature([discount]),
             "step_type": self._int64_feature([step_type]),
             "next_step_type": self._int64_feature([next_step_type]),
             "observation/human_pose": self._float_feature(obs),
-            "observation/action": self._float_feature(act),
+            "observation/action": self._float_feature(prev_act),
             "action": self._float_feature(act),
             "reward": self._float_feature([reward]),
         }
         example_proto = tf.train.Example(features=tf.train.Features(feature=features))
         return example_proto.SerializeToString()
+
+
+def pairwise(iterable):
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 
 def main():
@@ -130,8 +140,15 @@ def main():
             human_poses = runner.load_pickle(human_poses_path)
             robot_data = runner.load_pickle(robot_joint_path)[0]
             human_data = runner.extract_human_keypoints(human_poses)
+
+            # Only include arm keypoints (11-22)
+            # human_data = human_data[:, 11:23, :]
+
+            # Reshape to flatten xyz coordinates for all keypoints for each frame
+            human_data = human_data.reshape(-1, 99)
+
             # Ignore first few samples (noisy data)
-            human_data = human_data.reshape(-1, 99)[2:]
+            human_data = human_data[2:]
 
             # THIS CODE IS TO FIX THE FACT THAT THE ROBOT ARM DATA IS 5x OVERSAMPLED
             # TODO: Change robot motion recording code to sample at only 10Hz
@@ -151,12 +168,15 @@ def main():
 
             dataset_len, _ = human_data.shape
 
-            for i, (obs, act) in enumerate(zip(human_data, aligned_robot_data)):
+            for i, ((_, prev_act), (obs, act)) in enumerate(
+                pairwise(zip(human_data, aligned_robot_data))
+            ):
                 if i == 0:
                     yield runner.serialize_example(
                         step_type=0,
                         next_step_type=1,
                         obs=obs,
+                        prev_act=prev_act,
                         act=act,
                         reward=0.00001,
                         discount=1,
@@ -166,6 +186,7 @@ def main():
                         step_type=2,
                         next_step_type=0,
                         obs=obs,
+                        prev_act=prev_act,
                         act=act,
                         reward=0,
                         discount=1,
@@ -175,6 +196,7 @@ def main():
                         step_type=1,
                         next_step_type=2,
                         obs=obs,
+                        prev_act=prev_act,
                         act=act,
                         reward=1,
                         discount=0,
@@ -184,12 +206,13 @@ def main():
                         step_type=1,
                         next_step_type=1,
                         obs=obs,
+                        prev_act=prev_act,
                         act=act,
                         reward=0.00001,
                         discount=1,
                     )
 
-        # test_val = next(generator())
+        test_val = next(generator())
 
         serialized_features_dataset = tf.data.Dataset.from_generator(
             generator, output_types=tf.string, output_shapes=()
