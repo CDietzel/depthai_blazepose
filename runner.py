@@ -260,58 +260,37 @@ def main():
             robot_grad_mag = np.linalg.norm(robot_grad, axis=1)
             human_grad_mag = np.linalg.norm(human_grad, axis=1)
 
-            kernel_len = 15
-            kernel = np.ones(kernel_len) / kernel_len
-            smooth_robot_grad_mag = np.convolve(robot_grad_mag, kernel, mode="same")
-            smooth_human_grad_mag = np.convolve(human_grad_mag, kernel, mode="same")
+            # TODO: Figure out how to make this edge trimmer work well
 
-            r_hist, r_bin_edges = np.histogram(smooth_robot_grad_mag, bins="auto")
-            h_hist, h_bin_edges = np.histogram(smooth_human_grad_mag, bins="auto")
+            # r_hist, r_bin_edges = np.histogram(robot_grad_mag, bins="auto")
+            # h_hist, h_bin_edges = np.histogram(human_grad_mag, bins="auto")
 
-            classes = 3
-            r_thresh = filters.threshold_multiotsu(hist=r_hist, classes=classes)[0]
-            h_thresh = filters.threshold_multiotsu(hist=h_hist, classes=classes)[0]
+            # r_thresh = filters.threshold_isodata(hist=r_hist)
+            # h_thresh = filters.threshold_isodata(hist=h_hist)
 
-            r_thresh_val = (r_bin_edges[r_thresh] + r_bin_edges[r_thresh + 1]) / 2
-            h_thresh_val = (h_bin_edges[h_thresh] + h_bin_edges[h_thresh + 1]) / 2
-
-            r_thresh_start = np.argmax(smooth_robot_grad_mag >= r_thresh_val)
-            r_thresh_end = len(smooth_robot_grad_mag) - np.argmax(
-                smooth_robot_grad_mag[::-1] > r_thresh_val
-            )
-            h_thresh_start = np.argmax(smooth_human_grad_mag >= h_thresh_val)
-            h_thresh_end = len(smooth_human_grad_mag) - np.argmax(
-                smooth_human_grad_mag[::-1] > h_thresh_val
-            )
+            # r_thresh_val = (r_bin_edges[r_thresh] + r_bin_edges[r_thresh + 1]) / 2
+            # h_thresh_val = (h_bin_edges[h_thresh] + h_bin_edges[h_thresh + 1]) / 2
 
             # plt.rcParams["figure.figsize"] = (20, 10)
             # plt.subplot(1, 2, 1)
-            # plt.plot(range(len(smooth_human_grad_mag)), smooth_human_grad_mag)
+            # plt.plot(range(len(human_grad_mag)), human_grad_mag)
             # plt.axhline(y=h_thresh_val)
-            # plt.axvline(x=h_thresh_start)
-            # plt.axvline(x=h_thresh_end)
             # plt.subplot(1, 2, 2)
-            # plt.plot(range(len(smooth_robot_grad_mag)), smooth_robot_grad_mag)
+            # plt.plot(range(len(robot_grad_mag)), robot_grad_mag)
             # plt.axhline(y=r_thresh_val)
-            # plt.axvline(x=r_thresh_start)
-            # plt.axvline(x=r_thresh_end)
             # print(recording_sample_name)
             # print(inverse)
             # plt.show()
 
-            alignment, _ = soft_dtw_alignment(
-                smooth_robot_grad_mag[r_thresh_start:r_thresh_end],
-                smooth_human_grad_mag[h_thresh_start:h_thresh_end],
-            )
+            alignment, _ = soft_dtw_alignment(robot_grad_mag, human_grad_mag)
             row_sum = np.sum(alignment, axis=1)
-            aligned_unscaled = alignment @ human_data[h_thresh_start:h_thresh_end]
+            aligned_unscaled = alignment @ human_data
             aligned_human_data = aligned_unscaled / row_sum[:, None]
-            aligned_robot_data = robot_data[r_thresh_start:r_thresh_end]
 
-            dataset_len, _ = aligned_human_data.shape
+            dataset_len, _ = human_data.shape
 
             for i, ((_, prev_act), (obs, act)) in enumerate(
-                pairwise(zip(aligned_human_data, aligned_robot_data))
+                pairwise(zip(aligned_human_data, robot_data))
             ):
                 if i == 0:
                     yield runner.serialize_example(
