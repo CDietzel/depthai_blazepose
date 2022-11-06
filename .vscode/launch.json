@@ -30,6 +30,14 @@
             "program": "${workspaceFolder}/runner.py",
             "console": "integratedTerminal",
             "justMyCode": true
+        },        
+        {
+            "name": "Fixer",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/fixer.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         },
     ]
 }

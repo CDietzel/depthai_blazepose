@@ -112,8 +112,6 @@ def main():
     robot_joint_ext = ".recording"
     tfrecord_ext = ".tfrecord"
     tfrecord_spec_ext = ".tfrecord.spec"
-    num_recordings = 15
-    num_samples_per_recording = 6
 
     human_poses_paths = glob.glob(human_poses_folder + "*" + human_poses_ext)
     human_poses_files = [
@@ -282,6 +280,11 @@ def main():
             # print(inverse)
             # plt.show()
 
+            # plt.rcParams["figure.figsize"] = (20, 10)
+            # plt.plot(robot_data)
+            # print(recording_sample_name)
+            # plt.show()
+
             alignment, _ = soft_dtw_alignment(robot_grad_mag, human_grad_mag)
             row_sum = np.sum(alignment, axis=1)
             aligned_unscaled = alignment @ human_data
@@ -333,6 +336,8 @@ def main():
                         discount=1,
                     )
 
+        # for g in generator():
+        #     pass
         # test_val = next(generator())
 
         serialized_features_dataset = tf.data.Dataset.from_generator(

@@ -3,13 +3,17 @@
 
 
 
-2-*
-3-1
-3-5
-5-1
-7-1
-7-2
-9-*
-10-*
-14-*
-15-5
+2-* not a human arm motion
+9-* not a human arm motion
+10-* not a human arm motion
+14-* not a human arm motion
+
+All fixed:
+3-1 human arm movements before motion begins
+3-5 human arm movements before motion begins
+5-1 human arm movements before motion begins
+7-1 human arm movements before motion begins
+7-2 human arm movements before motion begins
+15-5 human arm movements before motion begins
+
+bad robot motions all good
