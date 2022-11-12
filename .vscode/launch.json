@@ -39,5 +39,13 @@
             "console": "integratedTerminal",
             "justMyCode": true
         },
+        {
+            "name": "Visualizer",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/visualizer.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
     ]
 }

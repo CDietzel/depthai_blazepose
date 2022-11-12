@@ -113,17 +113,17 @@ def main():
     tfrecord_ext = ".tfrecord"
     tfrecord_spec_ext = ".tfrecord.spec"
 
-    human_poses_paths = glob.glob(human_poses_folder + "*" + human_poses_ext)
+    human_poses_paths = sorted(glob.glob(human_poses_folder + "*" + human_poses_ext))
     human_poses_files = [
         os.path.splitext(os.path.basename(path))[0] for path in human_poses_paths
     ]
-    robot_joint_paths = glob.glob(robot_joint_folder + "*" + robot_joint_ext)
+    robot_joint_paths = sorted(glob.glob(robot_joint_folder + "*" + robot_joint_ext))
     robot_joint_files = [
         os.path.splitext(os.path.basename(path))[0] for path in robot_joint_paths
     ]
 
-    assert set(human_poses_files) == set(
-        robot_joint_files
+    assert (
+        human_poses_files == robot_joint_files
     ), "must have the same human pose files and robot joint files"
 
     inverse_list = [False, True]
